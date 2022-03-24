@@ -92,7 +92,9 @@ data "cloudinit_config" "_" {
     content_type = "text/x-shellscript"
     content      = <<-EOF
       #!/bin/sh
-      sed -i "s/-A INPUT -j REJECT --reject-with icmp-host-prohibited//" /etc/iptables/rules.v4 
+      iptables -I INPUT -p tcp -s 10.0.0.0/16 -j ACCEPT
+      iptables -I INPUT -p tcp -s ${local.ifconfig_co_json.ip_addr} -j ACCEPT
+      sed -i "s/-A INPUT -j REJECT --reject-with icmp-host-prohibited//" /etc/iptables/rules.v4
       netfilter-persistent start
     EOF
   }
@@ -169,4 +171,15 @@ locals {
     random_string.token1.result,
     random_string.token2.result
   )
+}
+
+data "http" "client_current_pub_ip" {
+  url = "https://ifconfig.me/all.json"
+  request_headers = {
+    Accept = "application/json"
+  }
+}
+
+locals {
+  ifconfig_co_json = jsondecode(data.http.client_current_pub_ip.body)
 }
